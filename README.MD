@@ -1,166 +1,122 @@
+# OmniPath
 
-# Project Name
+[](https://github.com/adammpkins/OmniPath#omnipath)
 
-> A catchy tagline or brief description of the project.
-
-An in-depth description of your project, detailing its purpose, benefits, and key features. You can also include notes about what inspired the creation of the project or any relevant context.
-
----
-
-## Table of Contents
-
-1. [Introduction](#introduction)
-2. [Demo](#demo)
-3. [Features](#features)
-4. [Technology Stack](#technology-stack)
-5. [Getting Started](#getting-started)
-   - [Prerequisites](#prerequisites)
-   - [Installation](#installation)
-6. [Usage](#usage)
-7. [Contributing](#contributing)
-8. [Code of Conduct](#code-of-conduct)
-9. [Testing](#testing)
-10. [Roadmap](#roadmap)
-11. [FAQ](#faq)
-12. [License](#license)
-13. [Acknowledgements](#acknowledgements)
-
----
-
-## Introduction
-
-A more detailed introduction to the project. What does it solve? Who is it for? Why is it important? Include images or infographics if it helps clarify what the project is about.
-
----
-
-## Demo
-
-Provide a link to a live demo or screencast of your project.
-
-- **Live Demo Link**: [Your Demo URL](https://example.com)
-- Screenshots:
-
-![Example Screenshot](https://via.placeholder.com/800x400)
-
----
+OmniPath is a smart directory-based automation tool for developers. It streamlines common tasks such as navigating to your Git repository, serving project documentation, opening dependency docs, and even auto-detecting & running your project. With a clean, dark-themed interface for your README, OmniPath brings all your project-related documentation and operations into one unified CLI.
 
 ## Features
 
-Some of the standout features of the project:
+[](https://github.com/adammpkins/OmniPath#features)
 
-- **Feature 1**: Brief explanation.
-- **Feature 2**: Brief explanation.
-- **Feature 3**: Brief explanation.
+-   **repo**: Opens your project's Git remote (e.g., GitHub repository) in your default browser.
+-   **readme**: Serves your project's `README.md` as an HTML page with a dark theme and smooth fonts.
+-   **docs**: Detects dependencies (for example, via a `composer.json` in Laravel apps) and opens the corresponding dependency documentation in your browser. If multiple dependencies are found, you'll be prompted to select one.
+-   **run**: Auto-detects the project type (Go, JavaScript, Python, etc.) and runs the appropriate command for the project.
 
-You can also include more detailed descriptions or images/screenshots for key features.
+## File Structure
 
----
+[](https://github.com/adammpkins/OmniPath#file-structure)
 
-## Technology Stack
+    OmniPath/
+    ├── go.mod
+    ├── cmd/
+    │   └── omnipath/
+    │       ├── main.go         // Main entry point (ideally moved to a separate cmd/main for production)
+    │       ├── root.go         // Sets up the Cobra CLI
+    │       ├── repo.go         // Command to open the Git repository
+    │       ├── docs.go         // Command to open dependency documentation
+    │       ├── readme.go       // Command to serve README.md as HTML
+    │       └── run.go          // Command to auto-detect and run the project
+    └── internal/
+        ├── browser/
+        │   └── browser.go      // Functions to open URLs in the default browser (cross-platform)
+        ├── git/
+        │   └── remote.go       // Functions to retrieve and parse Git remote URLs
+        ├── docs/
+        │   └── local.go        // Serves README.md as HTML with dark styling
+        ├── detect/
+        │   └── project.go      // Detects the project type and executes the run command
+        └── dependency/
+            └── dependency.go   // Detects project dependencies and returns documentation URLs
 
-A list of technologies used in the project:
 
-- **Programming Language**: Go (v1.23+), JavaScript
-- **Frameworks**: Gin, React
-- **Database**: PostgreSQL
-- **Tools**: Docker, Makefiles, VSCode
+## Installation
 
----
+[](https://github.com/adammpkins/OmniPath#installation)-   **Clone the repository:**
 
-## Getting Started
+    git clone https://github.com/adammpkins/OmniPath.git
+    cd OmniPath
 
-Detailed instructions on how to set up the project locally.
 
-### Prerequisites
+**Install dependencies:**
 
-- Install [Go](https://golang.org/) `>= 1.23`
-- [Docker](https://www.docker.com/) (if applicable)
+Ensure you have [Go](https://golang.org/dl/) (version 1.20 or later) installed. Then, run:
 
-### Installation
+go mod tidy
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/your-username/your-repo.git
-   ```
+**Build the project:**
 
-2. Navigate to the project folder:
-   ```bash
-   cd your-repo
-   ```
+go build -o omnipath ./cmd/omnipath
 
-3. Install dependencies:
-   ```bash
-   go mod tidy
-   ```
+Alternatively, you can run it directly:
 
-4. Run the application:
-   ```bash
-   go run main.go
-   ```
-
----
+go run ./cmd/main/main.go \[command\]
 
 ## Usage
 
-Explain how users can interact with the project – commands, options, or example scenarios. Include screenshots or text-based usage examples where possible.
+[](https://github.com/adammpkins/OmniPath#usage)
 
-```bash
-# Example command to test the API locally
-curl -X GET http://localhost:8080/api/endpoint
-```
+OmniPath provides several subcommands:
 
----
+**Open Repository:**
+
+    omnipath repo
+
+Opens your project's Git remote URL in your default web browser.
+
+**Serve README:**
+
+    omnipath readme
+
+Serves the `README.md` file from the project root as an HTML page with dark styling. It automatically opens your default browser to display the content.
+
+**Open Dependency Documentation:**
+
+    omnipath docs
+
+Detects dependencies (for example, via a `composer.json` for Laravel apps) and opens the corresponding dependency documentation in your browser. If multiple dependencies are detected, you'll be prompted to select one.
+
+**Run Project:**
+
+    omnipath run
+
+
+Auto-detects your project's type and executes the appropriate run command (e.g., `go run .`, `npm start`, or `python main.py`).
+
+
+## Customization
+
+[](https://github.com/adammpkins/OmniPath#customization)
+
+**Styling the README:**  
+The dark theme and smooth font styling for your README are defined in the HTML template within `internal/docs/local.go`. Feel free to tweak the CSS to match your preferences.
+
+**Extending Dependency Detection:**  
+Modify `internal/dependency/dependency.go` to add support for more dependencies and their corresponding documentation URLs.
+
 
 ## Contributing
 
-Contributions are always welcome!
+[](https://github.com/adammpkins/OmniPath#contributing)
 
-To get started, follow these steps:
+Contributions are welcome! Please fork the repository, make your changes, and submit a pull request. Open an issue if you have any questions or suggestions.
 
-1. Fork the repository.
-2. Create a feature branch: `git checkout -b feature/awesome-feature`.
-3. Commit your changes: `git commit -m "Add some awesome feature"`.
-4. Push the branch: `git push origin feature/awesome-feature`.
-5. Open a pull request with a clear description of the changes.
+## License
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
+[](https://github.com/adammpkins/OmniPath#license)
 
----
+This project is licensed under the [MIT License](https://github.com/adammpkins/OmniPath/blob/main/LICENSE).
 
-## Code of Conduct
+* * *
 
-This project follows a [Code of Conduct](CODE_OF_CONDUCT.md). Be sure to read it before contributing!
-
----
-
-## Testing
-
-Explain how to run tests for this project.
-
-```bash
-# Run the unit tests:
-go test ./...
-
-# Run specific test files:
-go test -v ./tests/example_test.go
-```
-
----
-
-## Roadmap
-
-Tell users about future updates and features:
-
-- [x] Core API functionality
-- [ ] Add unit tests for endpoints
-- [ ] Support internationalization
-- [ ] Implement CI/CD pipeline
-
-For current and planned tasks, check out the [open issues](https://github.com/your-username/your-repo/issues).
-
----
-
-## FAQ
-
-**Q: How do I report a bug?**  
-A: Open a new issue in the [issues tracker](https://github.com/
+Happy coding with OmniPath!
