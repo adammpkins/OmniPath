@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"github.com/adammpkins/OmniPath/internal/browser"
-	"github.com/adammpkins/OmniPath/internal/docs"
+	"github.com/adammpkins/OmniPath/internal/readme"
 
 	"github.com/spf13/cobra"
 )
@@ -23,7 +23,7 @@ var readmeCmd = &cobra.Command{
 			}
 		}()
 
-		docs.ServeReadmeAsHTML(readmePath, port)
+		readme.ServeReadmeAsHTML(readmePath, port)
 	},
 }
 

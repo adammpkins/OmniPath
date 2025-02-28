@@ -1,4 +1,4 @@
-package dependency
+package docs
 
 import (
 	"encoding/json"
