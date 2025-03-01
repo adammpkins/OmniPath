@@ -1,16 +1,12 @@
 package omnipath
 
 import (
-	"bufio"
 	"fmt"
 	"log"
-	"os"
-	"strconv"
-	"strings"
 
 	"github.com/adammpkins/OmniPath/internal/browser"
 	"github.com/adammpkins/OmniPath/internal/docs"
-
+	"github.com/adammpkins/OmniPath/internal/tui"
 	"github.com/spf13/cobra"
 )
 
@@ -27,22 +23,11 @@ var docsCmd = &cobra.Command{
 		if len(deps) == 1 {
 			selected = deps[0]
 		} else {
-			fmt.Println("Multiple dependencies detected. Please select one:")
-			for i, dep := range deps {
-				fmt.Printf("%d: %s\n", i+1, dep.Name)
-			}
-			fmt.Print("Enter number: ")
-			reader := bufio.NewReader(os.Stdin)
-			input, err := reader.ReadString('\n')
+			// Use our interactive Bubbletea selector.
+			selected, err = tui.SelectDependency(deps)
 			if err != nil {
-				log.Fatalf("Error reading input: %v", err)
+				log.Fatalf("Error selecting dependency: %v", err)
 			}
-			input = strings.TrimSpace(input)
-			idx, err := strconv.Atoi(input)
-			if err != nil || idx < 1 || idx > len(deps) {
-				log.Fatalf("Invalid selection")
-			}
-			selected = deps[idx-1]
 		}
 
 		fmt.Printf("Opening documentation for %s: %s\n", selected.Name, selected.DocURL)

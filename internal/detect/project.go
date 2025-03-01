@@ -43,6 +43,13 @@ func (d goDetector) Detect() bool {
 func (d goDetector) GetEntrypoint() string {
 	log.Println("Getting Go entrypoint...")
 
+	// Check for an air.toml file (Air projects)
+	if _, err := os.Stat(".air.toml"); err == nil {
+		log.Println("Detected Air project")
+		return "air"
+
+	}
+
 	// First try some common entrypoint patterns explicitly
 	commonEntrypoints := []string{
 		"./cmd/server/main.go",
@@ -243,19 +250,10 @@ func (d pythonDetector) GetEntrypoint() string {
 	}
 
 	// Check for Flask projects
-	if hasFile("app.py") && fileContains("app.py", "Flask") {
-		log.Println("Detected Flask project")
-		return "python app.py"
-	}
+	// TODO: Find a better way to select for Flask projectsΩ
 
 	// Check for FastAPI projects
-	if hasAnyFile([]string{"main.py", "app.py"}, "FastAPI") {
-		log.Println("Detected FastAPI project")
-		if hasFile("main.py") {
-			return "uvicorn main:app --reload"
-		}
-		return "uvicorn app:app --reload"
-	}
+	// TODO: Find a better way to select for FastAPI Projects
 
 	// Check common entry points by name
 	commonEntries := []string{
