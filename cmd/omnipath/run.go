@@ -1,224 +1,148 @@
 package omnipath
 
 import (
-	"bytes"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"github.com/adammpkins/OmniPath/internal/detect"
-	"github.com/spf13/cobra"
-	"io/fs"
-	"io/ioutil"
+	"bufio"
+	"io"
 	"log"
-	"os"
 	"os/exec"
-	"path/filepath"
-	"strings"
+	"sync"
+	"syscall"
+
+	"github.com/adammpkins/OmniPath/internal/detect"
+	"github.com/adammpkins/OmniPath/internal/tui"
+	"github.com/adammpkins/OmniPath/internal/tui/multiplexer"
+	"github.com/spf13/cobra"
 )
-
-// Detector defines the interface for project entrypoint detection.
-type Detector interface {
-	Name() string
-	Detect() bool
-	GetEntrypoint() string
-}
-
-// -----------------------------------------------------
-// Go Detector Implementation
-// -----------------------------------------------------
-
-type goDetector struct{}
-
-func (d goDetector) Name() string {
-	return "Go"
-}
-
-func (d goDetector) Detect() bool {
-	_, err := os.Stat("go.mod")
-	return err == nil
-}
-
-func (d goDetector) GetEntrypoint() string {
-	// First, check for a common entrypoint location: "cmd/main/main.go"
-	if _, err := os.Stat("cmd/main/main.go"); err == nil {
-		return "go run ./cmd/main/main.go"
-	}
-	// Otherwise, do a recursive search from the project root.
-	if entry, err := findGoEntrypoint("."); err == nil {
-		return "go run " + entry
-	}
-	// Fallback if nothing is found.
-	return "go run ."
-}
-
-// -----------------------------------------------------
-// JavaScript Detector Implementation
-// -----------------------------------------------------
-
-type jsDetector struct{}
-
-func (d jsDetector) Name() string {
-	return "JavaScript"
-}
-
-func (d jsDetector) Detect() bool {
-	_, err := os.Stat("package.json")
-	return err == nil
-}
-
-func (d jsDetector) GetEntrypoint() string {
-	data, err := ioutil.ReadFile("package.json")
-	if err == nil {
-		var pkg map[string]interface{}
-		if err := json.Unmarshal(data, &pkg); err == nil {
-			if mainEntry, ok := pkg["main"].(string); ok && mainEntry != "" {
-				return "node " + mainEntry
-			}
-		}
-	}
-	if _, err := os.Stat("index.js"); err == nil {
-		return "node index.js"
-	}
-	return "node ."
-}
-
-// -----------------------------------------------------
-// Python Detector Implementation
-// -----------------------------------------------------
-
-type pythonDetector struct{}
-
-func (d pythonDetector) Name() string {
-	return "Python"
-}
-
-func (d pythonDetector) Detect() bool {
-	_, err := os.Stat("requirements.txt")
-	return err == nil
-}
-
-func (d pythonDetector) GetEntrypoint() string {
-	// Prefer main.py in the project root.
-	if _, err := os.Stat("main.py"); err == nil {
-		return "python main.py"
-	}
-	if entry, err := findPythonEntrypoint("."); err == nil {
-		return "python " + entry
-	}
-	return "python ."
-}
-
-// -----------------------------------------------------
-// Unified Entrypoint Detection
-// -----------------------------------------------------
-
-// GetEntrypoint iterates over all registered detectors and returns the first one
-// that detects the project. It returns a tuple of (language, runCommand).
-func GetEntrypoint() (string, string) {
-	detectors := []Detector{
-		goDetector{},
-		jsDetector{},
-		pythonDetector{},
-		// Add more detectors here as needed.
-	}
-	for _, d := range detectors {
-		if d.Detect() {
-			return d.Name(), d.GetEntrypoint()
-		}
-	}
-	return "", ""
-}
-
-// RunProject executes the given command using the shell.
-func RunProject(command string) error {
-	cmd := exec.Command("sh", "-c", command)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
-}
-
-// -----------------------------------------------------
-// Helper Functions for Go and Python Detection
-// -----------------------------------------------------
-
-var errFound = errors.New("found entrypoint")
-
-// findGoEntrypoint recursively searches for a "main.go" that contains "package main" starting from root.
-func findGoEntrypoint(root string) (string, error) {
-	var entrypoint string
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		// Skip hidden and vendor directories.
-		if d.IsDir() && (strings.HasPrefix(d.Name(), ".") || d.Name() == "vendor") {
-			return filepath.SkipDir
-		}
-		if !d.IsDir() && d.Name() == "main.go" {
-			data, err := ioutil.ReadFile(path)
-			if err != nil {
-				return nil
-			}
-			if bytes.Contains(data, []byte("package main")) {
-				entrypoint = path
-				return errFound // break early
-			}
-		}
-		return nil
-	})
-	if err != nil && err != errFound {
-		return "", err
-	}
-	if entrypoint == "" {
-		return "", errors.New("no Go entrypoint found")
-	}
-	return entrypoint, nil
-}
-
-// findPythonEntrypoint recursively searches for a .py file containing a __main__ block.
-func findPythonEntrypoint(root string) (string, error) {
-	var entrypoint string
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() && (strings.HasPrefix(d.Name(), ".") || d.Name() == "venv" || d.Name() == "__pycache__") {
-			return filepath.SkipDir
-		}
-		if !d.IsDir() && filepath.Ext(d.Name()) == ".py" {
-			data, err := ioutil.ReadFile(path)
-			if err != nil {
-				return nil
-			}
-			if bytes.Contains(data, []byte("if __name__ == \"__main__\"")) ||
-				bytes.Contains(data, []byte("if __name__ == '__main__'")) {
-				entrypoint = path
-				return errFound
-			}
-		}
-		return nil
-	})
-	if err != nil && err != errFound {
-		return "", err
-	}
-	if entrypoint == "" {
-		return "", errors.New("no Python entrypoint found")
-	}
-	return entrypoint, nil
-}
 
 var runCmd = &cobra.Command{
 	Use:   "run",
-	Short: "Detects and runs the project based on its type",
+	Short: "Run selected service(s) interactively in fallback non-PTY mode",
 	Run: func(cmd *cobra.Command, args []string) {
-		lang, command := detect.GetEntrypoint()
-		if lang == "" {
-			log.Println("Unknown project type. No run command available.")
+		// Detect available services.
+		services := detect.GetServices()
+		if len(services) == 0 {
+			log.Println("No run commands detected. Please try running the project manually.")
 			return
 		}
-		fmt.Printf("Detected project type: %s\nRunning command: %s\n", lang, command)
-		if err := detect.RunProject(command); err != nil {
-			log.Fatalf("Error running project: %v", err)
+
+		var selectedServices []tui.Service
+		// If there are multiple services, let the user select.
+		if len(services) > 1 {
+			var serviceList []tui.Service
+			for _, svc := range services {
+				serviceList = append(serviceList, tui.Service{
+					Name:    svc.Name,
+					Command: svc.Command,
+				})
+			}
+			selected, err := tui.RunMultiSelect(serviceList)
+			if err != nil {
+				log.Fatalf("Error selecting service: %v", err)
+			}
+			if len(selected) == 0 {
+				log.Println("No service selected.")
+				return
+			}
+			selectedServices = selected
+		} else {
+			// For a single service, always force interactive mode.
+			svc := services[0]
+			selectedServices = []tui.Service{{
+				Name:    svc.Name,
+				Command: svc.Command,
+			}}
+		}
+
+		// Launch all selected services interactively in fallback mode.
+		var sessions []*tui.Session // Use pointers so updates propagate.
+		var wg sync.WaitGroup
+		var mu sync.Mutex
+
+		for _, s := range selectedServices {
+			wg.Add(1)
+			go func(s tui.Service) {
+				defer wg.Done()
+				log.Printf("Launching %s interactively: %s\n", s.Name, s.Command)
+				c := exec.Command("sh", "-c", s.Command)
+				// Set process group so all children can be terminated.
+				c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
+				stdoutPipe, err := c.StdoutPipe()
+				if err != nil {
+					log.Printf("Error obtaining stdout for %s: %v", s.Name, err)
+					return
+				}
+				stderrPipe, err := c.StderrPipe()
+				if err != nil {
+					log.Printf("Error obtaining stderr for %s: %v", s.Name, err)
+					return
+				}
+				stdinPipe, err := c.StdinPipe()
+				if err != nil {
+					log.Printf("Error obtaining stdin for %s: %v", s.Name, err)
+					return
+				}
+
+				if err := c.Start(); err != nil {
+					log.Printf("Error starting %s: %v", s.Name, err)
+					return
+				}
+
+				// Create a new session (as a pointer).
+				session := &tui.Session{
+					Name:   s.Name,
+					Stdin:  stdinPipe,
+					Output: "",
+					Cmd:    c,
+				}
+
+				// Read stdout concurrently.
+				go func() {
+					reader := bufio.NewReader(stdoutPipe)
+					for {
+						line, err := reader.ReadString('\n')
+						if err != nil {
+							if err != io.EOF {
+								log.Printf("Error reading stdout for %s: %v", s.Name, err)
+							}
+							break
+						}
+						mu.Lock()
+						session.Output += line
+						mu.Unlock()
+					}
+				}()
+				// Read stderr concurrently.
+				go func() {
+					reader := bufio.NewReader(stderrPipe)
+					for {
+						line, err := reader.ReadString('\n')
+						if err != nil {
+							if err != io.EOF {
+								log.Printf("Error reading stderr for %s: %v", s.Name, err)
+							}
+							break
+						}
+						mu.Lock()
+						session.Output += line
+						mu.Unlock()
+					}
+				}()
+
+				mu.Lock()
+				sessions = append(sessions, session)
+				mu.Unlock()
+			}(s)
+		}
+		wg.Wait()
+
+		if len(sessions) == 0 {
+			log.Fatalf("No sessions available to run multiplexer due to errors starting processes.")
+		}
+
+		// Run the multiplexer UI with the sessions.
+		if err := multiplexer.RunMultiplexer(sessions); err != nil {
+			log.Fatalf("Error running multiplexer: %v", err)
 		}
 	},
 }

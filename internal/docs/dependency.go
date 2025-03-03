@@ -43,6 +43,15 @@ func DetectDependencies() ([]DependencyDocs, error) {
 				// Extend this block for additional known dependencies as needed.
 			}
 		}
+		deps = append(deps, DependencyDocs{
+			Name:   "Composer",
+			DocURL: "https://getcomposer.org/doc/",
+		})
+
+		deps = append(deps, DependencyDocs{
+			Name:   "PHP",
+			DocURL: "https://www.php.net/docs.php",
+		})
 	}
 
 	// Check for go.mod
