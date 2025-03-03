@@ -5,10 +5,11 @@ import (
 	"os/exec"
 )
 
-// Service represents a runnable service with a name and command.
+// Service represents a runnable service with a name, command, and a flag indicating if it should run interactively.
 type Service struct {
-	Name    string
-	Command string
+	Name        string
+	Command     string
+	Interactive bool
 }
 
 // Session represents a running service with its stdin pipe, accumulated output, and command reference.

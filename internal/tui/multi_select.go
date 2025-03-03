@@ -11,7 +11,7 @@ import (
 
 // multiSelectItem wraps Service with a Selected flag.
 type multiSelectItem struct {
-	Service  Service // Uses the Service type defined in session.go
+	Service  Service
 	Selected bool
 }
 
@@ -59,7 +59,6 @@ func NewMultiSelectModel(services []Service) *multiSelectModel {
 	for i, s := range services {
 		items[i] = multiSelectItem{Service: s, Selected: false}
 	}
-	// Set height to at least the number of items plus some padding.
 	height := len(items) + 2
 	if height < 20 {
 		height = 20
@@ -88,7 +87,6 @@ func (m *multiSelectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.list, cmd = m.list.Update(msg)
 			return m, cmd
 		case " ":
-			// Toggle the selected state for the item at the cursor.
 			i := m.list.Cursor()
 			if item, ok := m.list.Items()[i].(multiSelectItem); ok {
 				item.Selected = !item.Selected
@@ -96,14 +94,12 @@ func (m *multiSelectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		case "enter":
-			// Gather items marked as selected.
 			var selected []Service
 			for _, item := range m.list.Items() {
 				if mi, ok := item.(multiSelectItem); ok && mi.Selected {
 					selected = append(selected, mi.Service)
 				}
 			}
-			// If no items were toggled, default to the highlighted item.
 			if len(selected) == 0 {
 				if item, ok := m.list.Items()[m.list.Cursor()].(multiSelectItem); ok {
 					selected = append(selected, item.Service)
@@ -126,7 +122,6 @@ func (m *multiSelectModel) View() string {
 	return b.String()
 }
 
-// RunMultiSelect launches the multi-select UI and returns the selected services.
 func RunMultiSelect(services []Service) ([]Service, error) {
 	model := NewMultiSelectModel(services)
 	p := tea.NewProgram(model)
