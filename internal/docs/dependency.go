@@ -43,6 +43,19 @@ func DetectDependencies() ([]DependencyDocs, error) {
 				// Extend this block for additional known dependencies as needed.
 			}
 		}
+
+		// check for inertiajs
+		if req, ok := data["require"].(map[string]interface{}); ok {
+			for key := range req {
+				if strings.EqualFold(key, "inertiajs/inertia-laravel") || strings.EqualFold(key, "ishanvyas22/cakephp-inertiajs") || strings.EqualFold(key, "inertiajs/inertia") {
+					deps = append(deps, DependencyDocs{
+						Name:   "InertiaJS",
+						DocURL: "https://inertiajs.com/",
+					})
+				}
+				// Extend this block for additional known dependencies as needed.
+			}
+		}
 		deps = append(deps, DependencyDocs{
 			Name:   "Composer",
 			DocURL: "https://getcomposer.org/doc/",
@@ -72,6 +85,30 @@ func DetectDependencies() ([]DependencyDocs, error) {
 				DocURL: "https://docs.gofiber.io/",
 			})
 		}
+	}
+
+	// check for python requirements.txt
+	if _, err := os.Stat("requirements.txt"); err == nil {
+		deps = append(deps, DependencyDocs{
+			Name:   "Python",
+			DocURL: "https://docs.python.org/3/",
+		})
+		content, err := ioutil.ReadFile("requirements.txt")
+		if err != nil {
+			if strings.Contains(string(content), "flask") {
+				deps = append(deps, DependencyDocs{
+					Name:   "Flask",
+					DocURL: "https://flask.palletsprojects.com/",
+				})
+			}
+		}
+	}
+
+	if _, err := os.Stat("main.py"); err == nil {
+		deps = append(deps, DependencyDocs{
+			Name:   "Python",
+			DocURL: "https://docs.python.org/3/",
+		})
 	}
 
 	if len(deps) == 0 {

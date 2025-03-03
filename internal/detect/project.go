@@ -58,6 +58,15 @@ func getGoServices() []Service {
 		})
 		return services
 	}
+	//if ./main.go exists, it's just a command.
+	if _, err := os.Stat("./main.go"); err == nil {
+		services = append(services, Service{
+			Name:        "Go App",
+			Command:     "go run ./main.go",
+			Interactive: false,
+		})
+		return services
+	}
 	// Otherwise, if it's just a command (cmd/main/main.go or cmd/main.go), run it non-interactively.
 	if _, err := os.Stat("./cmd/main/main.go"); err == nil {
 		services = append(services, Service{
@@ -97,7 +106,7 @@ func (d phpDetector) Detect() bool {
 
 func (d phpDetector) GetServices() []Service {
 	log.Println("Getting PHP entrypoint...")
-	contents, err := ioutil.ReadFile("composer.json")
+	contents, err := os.ReadFile("composer.json")
 	if err == nil {
 		var data map[string]interface{}
 		if err := json.Unmarshal(contents, &data); err == nil {
