@@ -114,7 +114,7 @@ func (d phpDetector) GetServices() []Service {
 				log.Println("Detected Laravel Sail project")
 				return []Service{{
 					Name:        "Laravel Sail",
-					Command:     "./vendor/bin/sail up",
+					Command:     "DOCKER_STREAMS=1 DOCKER_PLAIN_OUTPUT=1 script -q /dev/null ./vendor/bin/sail up",
 					Interactive: true,
 				}}
 			}
